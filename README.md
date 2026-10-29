@@ -38,14 +38,14 @@ It is intentionally **not** a generic chatbot, poll engine, prediction game, tri
 Verified locally on Windows:
 
 - TypeScript build: **PASS**
-- Automated tests: **38/38 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix mocks
+- Automated tests: **39/39 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix coverage`r`n- Genuine Twitch OAuth authorization and token identity validation: **PASS** (`@mikehunter77`)`r`n- Genuine Twitch EventSub WebSocket welcome + `channel.raid` subscription creation: **PASS**
 - Dependency audit: **0 vulnerabilities**
 - Brave browser rehearsal journey: **PASS**
 - Private proposal remains invisible to the overlay before approval: **PASS**
 - Embedded OBS preview after approval: **PASS**
 - Live-mode synthetic injection rejection: **PASS**
 
-**Not yet claimed:** a real Twitch raid has not yet been received by this build. The repository deliberately distinguishes mocked/local validation from live Twitch validation.
+**Not yet claimed:** a genuine incoming Twitch raid notification has not yet been observed by this build. RaidBridge has validated real Twitch OAuth and the real EventSub subscription path, but deliberately keeps provider-connection proof separate from a real raid-event proof.
 
 ## Architecture
 
@@ -97,7 +97,7 @@ RaidBridge treats broadcast output as a privileged side effect.
 - EventSub reconnect URLs are accepted only for Twitch's expected secure endpoint.
 - Twitch credentials and tokens remain server-side and `.env` is excluded from Git.
 - The dashboard and overlay use separate random local access keys.
-- The OAuth callback is authorized by a short-lived one-time `state` value rather than depending on a cross-site cookie.
+- The OAuth callback is authorized by a short-lived one-time `state` value rather than depending on a cross-site cookie.`r`n- After a valid OAuth state and successful authorization, the callback restores the protected HttpOnly `SameSite=Strict` control session before returning the host to the dashboard.
 
 ## Twitch integration
 
@@ -210,7 +210,7 @@ npm.cmd test
 npm.cmd audit
 ```
 
-Current verified baseline: **38/38 automated tests passing; 0 audit vulnerabilities.**
+Current verified baseline: **39/39 automated tests passing; 0 audit vulnerabilities.**
 
 Tests cover:
 
@@ -235,7 +235,7 @@ Tests cover:
 - token client-ID mismatch
 - local control/overlay separation
 - same-origin mutation boundary
-- live-mode synthetic-event rejection
+- live-mode synthetic-event rejection`r`n- valid OAuth callback control-session restoration
 
 ## Codex use
 
@@ -253,7 +253,7 @@ A key engineering lesson from the build was that multiple autonomous coding proc
 
 ## Known limitations
 
-- Live Twitch authentication and a genuine incoming raid still require final provider validation before the project can claim a live end-to-end pass.
+- Genuine Twitch OAuth and EventSub subscription creation are validated; a genuine incoming raid notification is still required before the project can claim a live end-to-end raid pass.
 - RaidBridge currently runs locally and is intentionally optimized for a single receiving streamer/session.
 - Metadata enrichment is deliberately small; if metadata is unavailable, RaidBridge shows an explicit degraded state and uses a generic deterministic bridge prompt rather than inventing facts.
 - No persistent database is required; the current hackathon build keeps bounded event/sequence state in memory.
