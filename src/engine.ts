@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type Provenance = 'live' | 'rehearsal';
+export type Provenance = 'live' | 'rehearsal' | 'twitch-test';
 const id = z.string().regex(/^\d{1,30}$/);
 const name = z.string().trim().min(1).max(100).refine(s => !/[\x00-\x1f\x7f]/.test(s));
 const envelope = z.object({

@@ -6,7 +6,7 @@ function hide() { $('card').hidden = true; }
 function render(next, serverNow) {
   card = next; offset = serverNow - Date.now(); lastSuccess = Date.now();
   if (!card) { hide(); currentSignature = ''; return; }
-  $('provenance').textContent = card.provenance === 'rehearsal' ? 'REHEARSAL · SYNTHETIC DATA' : 'LIVE RAID · HOST APPROVED';
+  $('provenance').textContent = card.provenance === 'rehearsal' ? 'REHEARSAL · SYNTHETIC DATA' : card.provenance === 'twitch-test' ? 'TWITCH OFFICIAL TEST · SIMULATED EVENT · HOST APPROVED' : 'LIVE RAID · HOST APPROVED';
   $('provenance').classList.toggle('live', card.provenance === 'live');
   $('step').textContent = ({ arrival: '01 / A NEW PARTY HAS ARRIVED', context: '02 / GET YOUR BEARINGS', bridge: '03 / YOUR FIRST SHARED MOMENT', completion: '04 / THE BRIDGE IS BUILT' })[card.stage];
   $('title').textContent = card.title; $('body').textContent = card.body;

@@ -10,6 +10,7 @@
     "dev": "tsx watch src/main.ts",
     "rehearsal": "tsx src/main.ts --rehearsal",
     "live": "tsx src/main.ts --live",
+    "twitch:test": "tsx src/main.ts --twitch-test",
     "build": "tsc",
     "start": "node dist/main.js",
     "test": "vitest run",

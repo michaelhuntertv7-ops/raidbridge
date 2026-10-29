@@ -14,6 +14,12 @@ RaidBridge owns one Twitch-native moment: the transition after an incoming raid.
 
 ![RaidBridge approved arrival with embedded OBS preview](docs/screenshots/arrival.png)
 
+### Official Twitch CLI EventSub validation
+
+![RaidBridge official Twitch CLI simulated raid validation](docs/screenshots/twitch-official-test.png)
+
+This evidence uses Twitch's official CLI WebSocket test server. It is intentionally labeled **simulated** and is separate from the production Twitch connection proof.
+
 ## The loop
 
 1. Twitch EventSub reports an incoming `channel.raid` event.
@@ -38,16 +44,18 @@ It is intentionally **not** a generic chatbot, poll engine, prediction game, tri
 Verified locally on Windows:
 
 - TypeScript build: **PASS**
-- Automated tests: **39/39 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix coverage
+- Automated tests: **40/40 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix coverage
 - Genuine Twitch OAuth authorization and token identity validation: **PASS** (`@mikehunter77`)
 - Genuine Twitch EventSub WebSocket welcome + `channel.raid` subscription creation: **PASS**
+- Official Twitch CLI WebSocket raid simulation through private proposal → host approval → read-only overlay: **PASS**
+- Official-test provenance remains distinct from both live and local rehearsal data: **PASS**
 - Dependency audit: **0 vulnerabilities**
 - Brave browser rehearsal journey: **PASS**
 - Private proposal remains invisible to the overlay before approval: **PASS**
 - Embedded OBS preview after approval: **PASS**
 - Live-mode synthetic injection rejection: **PASS**
 
-**Not yet claimed:** a genuine incoming Twitch raid notification has not yet been observed by this build. RaidBridge has validated real Twitch OAuth and the real EventSub subscription path, but deliberately keeps provider-connection proof separate from a real raid-event proof.
+**Not yet claimed:** a genuine incoming Twitch raid notification has not yet been observed by this build. RaidBridge has validated real Twitch OAuth and the real EventSub subscription path, plus Twitch's official simulated EventSub raid path, but deliberately keeps all three evidence levels distinct.
 
 ## Architecture
 
@@ -93,10 +101,12 @@ RaidBridge treats broadcast output as a privileged side effect.
 - Overlapping raids are not placed into an unbounded queue.
 - Host approval expires after two minutes.
 - Host can abort the sequence immediately.
-- Rehearsal and live inputs carry explicit provenance.
+- Rehearsal, official Twitch CLI test, and live inputs carry explicit provenance.
 - Rehearsal data is always labeled synthetic.
+- Official Twitch CLI test data is always labeled simulated and never presented as a live viewer raid.
+- The official-test lane does not query production metadata or use production OAuth/subscription calls.
 - Live-mode failure never silently falls back to synthetic evidence.
-- EventSub reconnect URLs are accepted only for Twitch's expected secure endpoint.
+- A caller-supplied official-test WebSocket endpoint remains isolated across retries; production reconnect URLs are accepted only for Twitch's expected secure endpoint.
 - Twitch credentials and tokens remain server-side and `.env` is excluded from Git.
 - The dashboard and overlay use separate random local access keys.
 - The OAuth callback is authorized by a short-lived one-time `state` value rather than depending on a cross-site cookie.
@@ -185,6 +195,37 @@ npm run live
 
 Open the private control deck URL printed in the terminal and choose **Connect Twitch**.
 
+### Official Twitch CLI test mode — simulated, not live
+
+Twitch provides an official mock EventSub WebSocket server for client validation. On Windows, install the official CLI once:
+
+```powershell
+winget install Twitch.TwitchCLI
+```
+
+Start Twitch's mock WebSocket server in one terminal:
+
+```powershell
+twitch event websocket start-server
+```
+
+Start RaidBridge's isolated official-test lane on a different local port:
+
+```powershell
+$env:PORT='3100'
+$env:TWITCH_TEST_TARGET_ID='200'
+$env:TWITCH_TEST_WS_URL='ws://127.0.0.1:8080/ws'
+npm.cmd run twitch:test
+```
+
+Then forward one official Twitch CLI raid event from another terminal:
+
+```powershell
+twitch event trigger raid -f 100 -t 200 --transport=websocket
+```
+
+The event travels through the same EventSub message handler, raid parser, private proposal gate, approval action, deterministic engine, and read-only overlay used by RaidBridge. The UI and overlay label this evidence **TWITCH OFFICIAL TEST · SIMULATED**; it is not a claim of a real viewer raid.
+
 ## OBS setup
 
 1. Start RaidBridge.
@@ -213,7 +254,7 @@ npm.cmd test
 npm.cmd audit
 ```
 
-Current verified baseline: **39/39 automated tests passing; 0 audit vulnerabilities.**
+Current verified baseline: **40/40 automated tests passing; 0 audit vulnerabilities.**
 
 Tests cover:
 
@@ -240,6 +281,7 @@ Tests cover:
 - same-origin mutation boundary
 - live-mode synthetic-event rejection
 - valid OAuth callback control-session restoration
+- isolation of the official Twitch CLI WebSocket endpoint across retries
 
 ## Codex use
 
@@ -257,7 +299,7 @@ A key engineering lesson from the build was that multiple autonomous coding proc
 
 ## Known limitations
 
-- Genuine Twitch OAuth and EventSub subscription creation are validated; a genuine incoming raid notification is still required before the project can claim a live end-to-end raid pass.
+- Genuine Twitch OAuth and EventSub subscription creation are validated, and the official Twitch CLI simulated raid path passes end to end; a genuine incoming viewer raid notification is still required before the project can claim a live end-to-end raid pass.
 - RaidBridge currently runs locally and is intentionally optimized for a single receiving streamer/session.
 - Metadata enrichment is deliberately small; if metadata is unavailable, RaidBridge shows an explicit degraded state and uses a generic deterministic bridge prompt rather than inventing facts.
 - No persistent database is required; the current hackathon build keeps bounded event/sequence state in memory.

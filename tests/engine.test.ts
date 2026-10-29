@@ -5,9 +5,10 @@ describe('raid trust boundary and deterministic sequence', () => {
   beforeEach(() => { now = Date.now(); engine = new Engine(() => now); });
   const fill = (e: Engine, time: number, id = 'raid-1') => e.ingest(syntheticRaid(id, time), 'rehearsal', '200');
   const approve = (e: Engine) => e.approve(e.pending!.raid.id, 'Host approved context', 'One emoji!');
-  it('parses the exact same envelope with explicit live or rehearsal provenance', () => {
+  it('parses the exact same envelope with explicit live, rehearsal, or Twitch-test provenance', () => {
     expect(parseRaid(syntheticRaid('a', now), 'live', '200', now).provenance).toBe('live');
     expect(parseRaid(syntheticRaid('a', now), 'rehearsal', '200', now).viewers).toBe(42);
+    expect(parseRaid(syntheticRaid('a', now), 'twitch-test', '200', now).provenance).toBe('twitch-test');
   });
   it.each(['missing', 'wrong type', 'wrong recipient', 'bad viewers', 'bad timestamp', 'stale', 'future', 'wrong condition', 'blank name', 'wrong version'])('fails closed: %s', which => {
     const raw: any = syntheticRaid('a', now);

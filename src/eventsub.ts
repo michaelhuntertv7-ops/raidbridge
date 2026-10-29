@@ -27,8 +27,9 @@ export class EventSub {
     status: (message: string) => void;
     revoked: () => void;
     socket?: (url: string) => Socket;
+    url?: string;
   }) {}
-  start() { this.stop(); this.stopped = false; this.attempts = 0; this.connect(); }
+  start() { this.stop(); this.stopped = false; this.attempts = 0; this.connect(this.options.url ?? 'wss://eventsub.wss.twitch.tv/ws'); }
   stop() {
     this.stopped = true;
     clearTimeout(this.retry);
@@ -55,7 +56,7 @@ export class EventSub {
     if (this.current) this.forget(this.current);
     if (this.candidate) this.forget(this.candidate);
     clearTimeout(this.retry);
-    this.retry = setTimeout(() => this.connect(), Math.min(30000, 1000 * 2 ** Math.min(this.attempts++, 5)));
+    this.retry = setTimeout(() => this.connect(this.options.url ?? 'wss://eventsub.wss.twitch.tv/ws'), Math.min(30000, 1000 * 2 ** Math.min(this.attempts++, 5)));
   }
   private connect(url = 'wss://eventsub.wss.twitch.tv/ws', migrating = false) {
     if (this.stopped) return;

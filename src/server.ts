@@ -5,8 +5,8 @@ import { Engine, parseRaid, syntheticRaid } from './engine.js';
 import { Twitch } from './twitch.js';
 import { EventSub } from './eventsub.js';
 
-export type RaidBridgeMode = 'live' | 'rehearsal';
-export type AppOptions = { mode?: RaidBridgeMode; port?: number; twitch?: Twitch };
+export type RaidBridgeMode = 'live' | 'rehearsal' | 'twitch-test';
+export type AppOptions = { mode?: RaidBridgeMode; port?: number; twitch?: Twitch; testTargetId?: string; eventSubUrl?: string };
 
 export function createApp(options: AppOptions = {}) {
   const mode = options.mode ?? 'rehearsal';
@@ -20,23 +20,30 @@ export function createApp(options: AppOptions = {}) {
     process.env.TWITCH_CLIENT_SECRET || '',
     process.env.TWITCH_REDIRECT_URI || `${origin}/auth/callback`,
   );
-  let status = mode === 'rehearsal' ? 'Rehearsal · synthetic events only' : 'Twitch not connected';
+  let status = mode === 'rehearsal' ? 'Rehearsal · synthetic events only' : mode === 'twitch-test' ? 'Twitch official test · waiting for CLI WebSocket' : 'Twitch not connected';
   let oauth: { state: string; expiresAt: number } | undefined;
 
   const eventsub = new EventSub({
-    subscribe: sessionId => twitch.subscribe(sessionId),
+    url: options.eventSubUrl,
+    subscribe: sessionId => mode === 'twitch-test' ? Promise.resolve() : twitch.subscribe(sessionId),
     notify: async raw => {
+      if (mode === 'twitch-test') {
+        const targetId = options.testTargetId ?? '200';
+        const result = engine.ingest(raw, 'twitch-test', targetId, { warning: 'Official Twitch CLI simulated EventSub event · production metadata not queried' });
+        if (result === 'pending') status = 'Twitch official test raid received · awaiting host approval';
+        return;
+      }
       if (!twitch.user) throw new Error('Twitch identity unavailable');
       const raid = parseRaid(raw, 'live', twitch.user.id);
       const metadata = await twitch.metadata(raid.sourceId);
       const result = engine.ingest(raw, 'live', twitch.user.id, metadata);
       if (result === 'pending') status = 'Raid received · awaiting host approval';
     },
-    status: message => { status = message; },
+    status: message => { status = mode === 'twitch-test' ? `Twitch official test · ${message}` : message; },
     revoked: () => {
       engine.abort('Twitch subscription revoked');
-      twitch.clear();
-      status = 'Twitch subscription revoked. Reconnect Twitch.';
+      if (mode === 'live') twitch.clear();
+      status = mode === 'twitch-test' ? 'Twitch official test subscription revoked' : 'Twitch subscription revoked. Reconnect Twitch.';
     },
   });
 
@@ -149,14 +156,22 @@ export function createApp(options: AppOptions = {}) {
       const data = JSON.parse(body || '{}');
       switch (url.pathname) {
         case '/api/rehearse': {
-          if (mode !== 'rehearsal') return send(400, { error: 'Synthetic inputs disabled in live mode' });
+          if (mode !== 'rehearsal') return send(400, { error: 'Synthetic inputs disabled outside rehearsal mode' });
           const id = `rehearsal-${Date.now()}-${randomBytes(4).toString('hex')}`;
           engine.ingest(syntheticRaid(id), 'rehearsal', '200');
           break;
         }
-        case '/api/approve': engine.approve(String(data.id ?? ''), String(data.context ?? ''), String(data.prompt ?? '')); break;
+        case '/api/approve':
+          engine.approve(String(data.id ?? ''), String(data.context ?? ''), String(data.prompt ?? ''));
+          if (mode === 'twitch-test') status = 'Twitch official test · host-approved sequence running';
+          else if (mode === 'live') status = 'Live raid · host-approved sequence running';
+          break;
         case '/api/skip': engine.skip(); break;
-        case '/api/abort': engine.abort(); break;
+        case '/api/abort':
+          engine.abort();
+          if (mode === 'twitch-test') status = 'Twitch official test · overlay cleared';
+          else if (mode === 'live') status = 'Live mode · overlay cleared';
+          break;
         case '/api/connect': {
           if (mode !== 'live' || !twitch.configured || twitch.redirect !== `${origin}/auth/callback`) {
             return send(400, { error: 'Configure Twitch client ID, secret and exact localhost redirect first.' });

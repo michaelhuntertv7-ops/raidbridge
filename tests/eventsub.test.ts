@@ -26,5 +26,11 @@ describe('EventSub lifecycle (mocked transport, not live Twitch)', () => {
   it('revocation stops retries and calls authority loss handler', async () => { welcome(sockets[0]!); sockets[0]!.send('revocation'); await vi.advanceTimersByTimeAsync(60000); expect(revoked).toHaveBeenCalledOnce(); expect(sockets).toHaveLength(1); });
   it('handles subscription failures without reporting connected', async () => { subscribe.mockRejectedValue(new Error('401')); welcome(sockets[0]!); await vi.advanceTimersByTimeAsync(1000); expect(sockets).toHaveLength(2); expect(status.mock.calls.flat().join()).not.toContain('Connected ·'); });
   it('stops all timers on shutdown', async () => { client.stop(); await vi.advanceTimersByTimeAsync(120000); expect(sockets).toHaveLength(1); });
+  it('keeps a caller-supplied official-test endpoint isolated across retries', async () => {
+    client.stop(); sockets = []; urls = [];
+    client = new EventSub({ subscribe, notify, status, revoked, url: 'ws://127.0.0.1:8080/ws', socket: url => { const s = new FakeSocket(); sockets.push(s); urls.push(url); return s; } });
+    client.start(); expect(urls[0]).toBe('ws://127.0.0.1:8080/ws');
+    await vi.advanceTimersByTimeAsync(11000); expect(urls[1]).toBe('ws://127.0.0.1:8080/ws');
+  });
   it.each(['ws://eventsub.wss.twitch.tv/ws', 'wss://evil.test/ws', 'wss://eventsub.wss.twitch.tv.evil.test/ws', 'wss://user@eventsub.wss.twitch.tv/ws', 'wss://eventsub.wss.twitch.tv/private'])('rejects unsafe reconnect destination %s', url => expect(() => safeReconnect(url)).toThrow());
 });

@@ -19,7 +19,7 @@ $('proposal').onsubmit = event => { event.preventDefault(); void run(() => actio
 $('copy').onclick = async () => { try { await navigator.clipboard.writeText($('overlay-url').value); $('copy').textContent = 'Copied!'; setTimeout(() => $('copy').textContent = 'Copy URL', 1800); } catch { $('overlay-url').select(); showError(new Error('Select and copy the OBS URL manually.')); } };
 function render(state) {
   latest = state; serverOffset = state.now - Date.now();
-  $('mode').textContent = state.mode === 'rehearsal' ? 'REHEARSAL · SYNTHETIC' : 'LIVE MODE';
+  $('mode').textContent = state.mode === 'rehearsal' ? 'REHEARSAL · SYNTHETIC' : state.mode === 'twitch-test' ? 'TWITCH OFFICIAL TEST · SIMULATED' : 'LIVE MODE';
   $('mode').classList.toggle('live', state.mode === 'live');
   $('connection').textContent = state.status + (state.user ? ` · @${state.user.login}` : '');
   $('connect').hidden = state.mode !== 'live';
@@ -27,7 +27,7 @@ function render(state) {
   $('connect').textContent = !state.configured ? 'Set Twitch credentials in .env' : state.user ? 'Reconnect Twitch' : 'Connect Twitch';
   $('disconnect').hidden = !state.user;
   $('rehearse').hidden = state.mode !== 'rehearsal';
-  $('rehearsal-note').textContent = state.mode === 'rehearsal' ? 'Clearly labeled rehearsal. No Twitch connection required.' : 'Live mode accepts only authenticated Twitch events. No synthetic fallback.';
+  $('rehearsal-note').textContent = state.mode === 'rehearsal' ? 'Clearly labeled rehearsal. No Twitch connection required.' : state.mode === 'twitch-test' ? 'Official Twitch CLI simulation. Not a live viewer raid and never labeled as one.' : 'Live mode accepts only authenticated Twitch events. No synthetic fallback.';
   $('idle').hidden = Boolean(state.pending || state.card);
   $('proposal').hidden = !state.pending;
   $('running').hidden = !state.card;
@@ -40,7 +40,8 @@ function render(state) {
     const p = state.pending;
     $('raid-name').textContent = p.raid.source;
     $('raid-size').textContent = `${p.raid.viewers} raiders`;
-    $('metadata').textContent = `${p.raid.provenance === 'rehearsal' ? 'SYNTHETIC FIXTURE' : 'TWITCH EVENTSUB'} · ${p.metadata.sourceCategory || 'Source category unavailable'} → ${p.metadata.targetCategory || 'Host category unavailable'}`;
+    const provenance = p.raid.provenance === 'rehearsal' ? 'SYNTHETIC FIXTURE' : p.raid.provenance === 'twitch-test' ? 'TWITCH CLI · OFFICIAL SIMULATION' : 'TWITCH EVENTSUB · LIVE';
+    $('metadata').textContent = `${provenance} · ${p.metadata.sourceCategory || 'Source category unavailable'} → ${p.metadata.targetCategory || 'Host category unavailable'}`;
     $('warning').hidden = !p.metadata.warning; $('warning').textContent = p.metadata.warning || '';
     if (proposalId !== p.raid.id) { proposalId = p.raid.id; $('context').value = p.context.slice(0, 280); $('prompt').value = p.prompt.slice(0, 280); }
   } else proposalId = undefined;
