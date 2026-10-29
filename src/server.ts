@@ -109,7 +109,10 @@ export function createApp(options: AppOptions = {}) {
           status = 'Twitch authorization failed. Try connecting again.';
           return send(400, { error: status });
         }
-        res.writeHead(303, { Location: '/' });
+        res.writeHead(303, {
+          'Set-Cookie': `${cookieName}=${adminKey}; HttpOnly; SameSite=Strict; Path=/`,
+          Location: '/',
+        });
         return res.end();
       }
 

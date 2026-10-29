@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../src/server.js';
+import { Twitch } from '../src/twitch.js';
 
 const running: ReturnType<typeof createApp>[] = [];
 afterEach(async () => {
@@ -49,6 +50,43 @@ describe('HTTP trust boundary', () => {
     expect((await overlay()).card).toBeNull();
     expect((await fetch(`${app.origin}/auth/callback?state=bad&code=bad`)).status).toBe(403);
     expect((await fetch('http://127.0.0.1:31987/api/state')).status).toBe(401);
+  });
+
+  it('restores the private control cookie after a valid OAuth callback', async () => {
+    const port = 31989;
+    const request = (async (input: string | URL | Request) => {
+      const url = String(input);
+      const headers = { 'Content-Type': 'application/json' };
+      if (url === 'https://id.twitch.tv/oauth2/token') {
+        return new Response(JSON.stringify({ access_token: 'access', refresh_token: 'refresh', expires_in: 3600 }), { status: 200, headers });
+      }
+      if (url === 'https://id.twitch.tv/oauth2/validate') {
+        return new Response(JSON.stringify({ client_id: 'client', user_id: '123', login: 'mikehunter77', expires_in: 3600 }), { status: 200, headers });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }) as typeof fetch;
+    const twitch = new Twitch('client', 'secret', `http://localhost:${port}/auth/callback`, request);
+    const app = createApp({ port, mode: 'live', twitch });
+    running.push(app);
+    await new Promise<void>(resolve => app.server.listen(port, '127.0.0.1', resolve));
+    app.eventsub.start = () => {};
+
+    const cookie = `rb_admin=${app.adminKey}`;
+    const connect = await fetch(app.origin + '/api/connect', {
+      method: 'POST',
+      headers: { Cookie: cookie, Origin: app.origin, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    expect(connect.status).toBe(200);
+    const authorizeUrl = new URL(((await connect.json()) as { url: string }).url);
+    const state = authorizeUrl.searchParams.get('state');
+    expect(state).toBeTruthy();
+
+    const callback = await fetch(`${app.origin}/auth/callback?state=${state}&code=ok`, { redirect: 'manual' });
+    expect(callback.status).toBe(303);
+    expect(callback.headers.get('location')).toBe('/');
+    expect(callback.headers.get('set-cookie')).toMatch(new RegExp(`rb_admin=${app.adminKey}; HttpOnly; SameSite=Strict; Path=/`));
+    expect(twitch.user).toEqual({ id: '123', login: 'mikehunter77' });
   });
 
   it('refuses synthetic injection in live mode', async () => {
