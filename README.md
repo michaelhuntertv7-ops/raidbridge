@@ -38,7 +38,9 @@ It is intentionally **not** a generic chatbot, poll engine, prediction game, tri
 Verified locally on Windows:
 
 - TypeScript build: **PASS**
-- Automated tests: **39/39 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix coverage`r`n- Genuine Twitch OAuth authorization and token identity validation: **PASS** (`@mikehunter77`)`r`n- Genuine Twitch EventSub WebSocket welcome + `channel.raid` subscription creation: **PASS**
+- Automated tests: **39/39 PASS** across engine, EventSub lifecycle, HTTP trust boundary and Twitch OAuth/Helix coverage
+- Genuine Twitch OAuth authorization and token identity validation: **PASS** (`@mikehunter77`)
+- Genuine Twitch EventSub WebSocket welcome + `channel.raid` subscription creation: **PASS**
 - Dependency audit: **0 vulnerabilities**
 - Brave browser rehearsal journey: **PASS**
 - Private proposal remains invisible to the overlay before approval: **PASS**
@@ -97,7 +99,8 @@ RaidBridge treats broadcast output as a privileged side effect.
 - EventSub reconnect URLs are accepted only for Twitch's expected secure endpoint.
 - Twitch credentials and tokens remain server-side and `.env` is excluded from Git.
 - The dashboard and overlay use separate random local access keys.
-- The OAuth callback is authorized by a short-lived one-time `state` value rather than depending on a cross-site cookie.`r`n- After a valid OAuth state and successful authorization, the callback restores the protected HttpOnly `SameSite=Strict` control session before returning the host to the dashboard.
+- The OAuth callback is authorized by a short-lived one-time `state` value rather than depending on a cross-site cookie.
+- After a valid OAuth state and successful authorization, the callback restores the protected HttpOnly `SameSite=Strict` control session before returning the host to the dashboard.
 
 ## Twitch integration
 
@@ -235,7 +238,8 @@ Tests cover:
 - token client-ID mismatch
 - local control/overlay separation
 - same-origin mutation boundary
-- live-mode synthetic-event rejection`r`n- valid OAuth callback control-session restoration
+- live-mode synthetic-event rejection
+- valid OAuth callback control-session restoration
 
 ## Codex use
 
